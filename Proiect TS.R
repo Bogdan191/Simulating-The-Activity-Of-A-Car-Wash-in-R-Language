@@ -12,7 +12,6 @@ genLambdaT <- function(t) {
     return (3)
   if(t < 6) 
     return (tan(0.2*t) + sin(2*(t^2))^2 + 4)
-  
   if(t <= 9)
     return (7)
   
@@ -20,19 +19,14 @@ genLambdaT <- function(t) {
     return (t + 1)
   
   return (t)
-    
 }
 
 # Generare variabila TS
-
 genTs <- function(s) {
   t <- s
   u1 <- runif(1, 0, 1)
   u <- runif(1,0, 1.2)
-  
   lambdaT <- genLambdaT(t)
-  print(lambdaT)
-  
   lambda <- round(lambdaT)
   print(lambda)
   
@@ -43,9 +37,7 @@ genTs <- function(s) {
     t <- t-(1/lambda) * log(u1)
     
   }
-  
   return(t)
-  
 }
 
 #   definire functia de repartitie G1(x) pentru Y1, Y1 fiind timpult de 
@@ -75,12 +67,10 @@ genY1 <- function() {
 
 
 # definire Y2(timpul de servire la serverul 2)
-
 pois <- function(x) {
   
   i <- 0
   P <- 1
-  
   while(P < exp(-x)) {
     U <- runif(0, 1)
     i <- i + 1
@@ -89,8 +79,6 @@ pois <- function(x) {
   X <- i - 1
   return (X)
   
-  
-  
 }
 
 norm <- function(x, ab_med) {
@@ -98,7 +86,6 @@ norm <- function(x, ab_med) {
   return (0)
     
 }
-
 
 genY2 <- function() {
   
@@ -135,9 +122,11 @@ main <- function() {
   nrOrd <- 0 # numarul de ordine din sistem
   server1 <- list() # se salveaza pentru fiecare client, timpul de servire pentru serverul 1 
   server2 <- list()  #se salveaza pentru fiecare client, timpul de servire in cadrul celui de al doilea server
+  clientiPierduti <- 0 # nr de clienti pierduti cand coada este plina
+  profitZilnic <- 0
+  incasari <- 0 # pt timp 0-3, se plateste 10, 3-6, 5, si pentru mai mare de 6, se plateste 3
   
-  
-  while(T < 1000) { 
+  while(T < 400) { 
     
     # Primul caz: cand soseste clientul verificam daca poate fi servit imediat
     # sau daca intra in coada de asteptare
@@ -158,11 +147,12 @@ main <- function() {
             Y1 = genY1()
             T1 = T + Y1
           }else if(SS[1]== 1 & SS[2] != 0 & SS[3] == 0) { # serverul 1 ocupat
-            
+            # intra clinetul in serverul 2, cel modern, care are un timp putin mai scurt,
+            # cu 20%
             SS[1] = 2
             SS[3] = Na
             Y2 = genY2()
-            T2 = T + Y2
+            T2 = (T + Y2)
             
           }else if(SS[1] == 1 & SS[2] == 0 && SS[3] != 0){ # serverul 2 ocupat
             SS[1] = 2
@@ -173,7 +163,10 @@ main <- function() {
          
         } else # Mai multi clienti in sistem
           {
-            SS[1] = SS[1] + 1
+            
+              SS[1] = SS[1] + 1
+            
+            
           }
     
     }
@@ -194,16 +187,19 @@ main <- function() {
         T1 = Inf
       } else if(SS[1] == 2){ #In sistem sunt 2 clienti
         SS[1] = 1
-        SS[2] = 2
+        SS[2] = SS[2] - 1
+        
         T1 = Inf
         
       } else if(SS[1] > 2){# In sistem sunt cel putin 3 clienti
+         
+            nrOrd = max(SS[2], SS[3]) # nrOrd  + 1 reprezinta numarul de ordine pt client nou
+            SS[1] = SS[1] - 1
+            SS[2] = nrOrd + 1
+            Y1 = genY1()
+            T1 = T + Y1
+            
         
-          nrOrd = max(SS[2], SS[3]) # nrOrd  + 1 reprezinta numarul de ordine pt client nou
-          SS[1] = SS[1] - 1
-          SS[2] = nrOrd + 1
-          Y1 = genY1()
-          T1 = T + Y1
         
       }  
       
@@ -248,12 +244,42 @@ main <- function() {
   timpPetrecut <- list()
   # se calculeaza timpul prntru fiecare cleint in sistem si salvam in lista definita mai sus
   
-  for(i in seq(1, 1000)) {
+  for(i in seq(1, 400)) {
     timpPetrecut <- c(timpPetrecut,unlist(D[i]) - unlist(A[i]))
+   
+ 
+    if(timpPetrecut[length(timpPetrecut)] <= 3){
+      incasari = incasari + 10
+      
+    }else if(timpPetrecut[length(timpPetrecut)] <= 6){
+      incasari = incasari + 5
+    }else {
+      incasari = incasari + 3
+    }
     
   }
-  
+  cheltuieli = totalC * 0.6
+  cat("\nIncasari: ", incasari, "\n")
+    
+  cat("Total clienti: ", totalC, "\n")
   hist(unlist(timpPetrecut), breaks = 100, main="Timp petrecut")
+  cat("timp Maxim petrecut in sistem=", max(unlist(timpPetrecut)), "\n")
+  cat("timp minim petrecut in sistem=", min(unlist(timpPetrecut)), "\n")
+  cat("media timpului petrecut in sistem=", mean(unlist(timpPetrecut)), "\n")
+  
+  hist(unlist(server1), main="Timpul petrecut in primul server")
+  hist(unlist(server2), main="Timpul petrecut in al doilea server")
+  
+  cat("Numarul mediu de clienti serviti de primul server: ",
+      length(server1)/totalC, "\n")
+  
+  cat("NUmarul mediu de cleinti serviti de al doilea server: ",
+      length(server2)/totalC, "\n")
+  
+  cat("Clineti Pierduti intr-o zi", clientiPierduti, "\n")
+  profitZilnic= incasari - cheltuieli
+  cat("Profit zilnic : ", profitZilnic, "\n")
+  
   
 }
 
